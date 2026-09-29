@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CÓDIGO TINTO — Bodega & Licores Artesanales</title>
+  
+  <!-- Bootstrap 5 CSS CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Estilos propios -->
+  <link rel="stylesheet" href="assets/css/custom.css">
+</head>
+<body>
+
+  <!-- Alerta Legal Obligatoria (+18) -->
+  <div class="bg-black text-warning text-center py-1 small border-bottom border-secondary">
+    ⚠️ Exclusivo para mayores de 18 años (Ley N° 259). El consumo excesivo de alcohol es perjudicial para la salud.
+  </div>
+
+  <!-- Navegación Principal -->
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top">
+    <div class="container">
+      <a class="navbar-brand fw-bold brand-dorado text-uppercase" href="index.html">
+        🍷 CÓDIGO TINTO
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navPrincipal">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navPrincipal">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item"><a class="nav-link active" href="index.html">Inicio</a></li>
+          <li class="nav-item"><a class="nav-link" href="pages/catalogo.html">Catálogo Completo</a></li>
+          <li class="nav-item"><a class="nav-link" href="#temporada">Vinos de Época</a></li>
+          <li class="nav-item"><a class="nav-link" href="pages/mis-pedidos.html">Seguimiento GPS</a></li>
+        </ul>
+        <div class="d-flex align-items-center gap-2">
+          <a href="pages/carrito.html" class="btn btn-outline-warning btn-sm position-relative">
+            🛒 Carrito <span id="cart-count" class="badge rounded-pill bg-danger">0</span>
+          </a>
+          <!-- Contenedor dinámico de sesión (se llena mediante app.js) -->
+          <div id="nav-auth-container" class="d-flex align-items-center gap-2">
+            <a href="pages/login.html" class="btn btn-outline-light btn-sm">Ingresar</a>
+            <a href="pages/registro.html" class="btn btn-tinto btn-sm">Registrarse</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="py-5" style="background: linear-gradient(rgba(18, 8, 22, 0.75), rgba(13, 6, 17, 0.9)), url('assets/img/interfaz/hero.png') center/cover no-repeat; min-height: 75vh; display: flex; align-items: center;">
+    <div class="container py-4">
+      <div class="row align-items-center">
+        <div class="col-lg-7">
+          <span class="badge bg-warning text-dark px-3 py-2 text-uppercase mb-3 fw-bold">Tradición y Altura Tarijeña</span>
+          <h1 class="display-3 fw-bold mb-3 text-white">Vinos, Singanis & Licores Artesanales</h1>
+          <p class="lead text-light mb-4">
+            Selección exclusiva del Valle de Concepción. Despacho directo a tu puerta con estimación logística en tiempo real mediante GPS.
+          </p>
+          <div class="d-flex flex-wrap gap-3">
+            <a href="pages/catalogo.html" class="btn btn-tinto btn-lg px-4 py-3 fw-bold">Explorar Catálogo</a>
+            <a href="#temporada" class="btn btn-outline-light btn-lg px-4 py-3">Selección de Temporada</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sección: Recomendados por Temporada / Época -->
+  <section id="temporada" class="container py-5">
+    <div class="d-flex justify-content-between align-items-end mb-4 border-bottom pb-2 border-secondary">
+      <div>
+        <h6 class="text-warning text-uppercase mb-1 small">Selección del Enólogo</h6>
+        <h2 class="fw-bold text-white mb-0">Recomendados para esta Época</h2>
+      </div>
+      <a href="pages/catalogo.html" class="text-decoration-none text-warning small">Ver toda la bodega &rarr;</a>
+    </div>
+
+    <!-- Cuadrícula dinámica de productos destacados -->
+    <div class="row g-4" id="catalogo-grid">
+      <div class="col-12 text-center text-secondary py-5">
+        Cargando vinos destacados de la bodega...
+      </div>
+    </div>
+  </section>
+
+  <!-- Pie de Página -->
+  <footer class="py-4 border-top border-secondary mt-5">
+    <div class="container text-center text-secondary small">
+      <p class="mb-1">© 2026 <strong class="text-light">CÓDIGO TINTO</strong> — Plataforma E-commerce de Vinos y Destilados.</p>
+      <p class="mb-0">Tarija, Bolivia • Venta controlada para mayores de 18 años.</p>
+    </div>
+  </footer>
+
+  <!-- Scripts CDN Obligatorios -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

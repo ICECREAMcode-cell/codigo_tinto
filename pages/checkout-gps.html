@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout y Ubicación GPS — CÓDIGO TINTO</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="../assets/css/custom.css">
+  <style>
+    #checkout-map {
+      height: 280px;
+      border: 1px solid #6f3a83;
+      border-radius: 0.375rem;
+      overflow: hidden;
+    }
+
+    .marcador-bolita-roja {
+      width: 18px;
+      height: 18px;
+      background: #ef233c;
+      border: 3px solid #fff;
+      border-radius: 50% 50% 50% 0;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+      transform: rotate(-45deg);
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top">
+    <div class="container">
+      <a class="navbar-brand fw-bold brand-dorado" href="../index.html">🍷 CÓDIGO TINTO</a>
+      <div class="d-flex gap-2">
+        <a href="carrito.html" class="btn btn-outline-light btn-sm">← Volver al Carrito</a>
+        <a href="../index.html" class="btn btn-outline-secondary btn-sm">Inicio</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container py-5" style="max-width: 950px;">
+    <h2 class="fw-bold text-white mb-1">📍 Finalizar Pedido y Logística GPS</h2>
+    <p class="text-secondary small mb-4">Captura tu punto exacto para que el repartidor entregue tus botellas a la temperatura ideal.</p>
+
+    <form id="form-checkout">
+      <div class="row g-4">
+        
+        <!-- Columna Izquierda: Punto GPS y Datos Fiscales -->
+        <div class="col-md-7">
+          <div class="card panel-admin p-4 mb-3">
+            <h5 class="brand-dorado fw-bold mb-3">1. Punto de Entrega Satelital</h5>
+            
+            <div class="p-3 rounded mb-3" style="background: #1c0e25; border: 2px dashed #4e1d61;">
+              <div id="checkout-map" aria-label="Mapa para seleccionar el punto de entrega"></div>
+              <p class="mb-1 mt-3 text-light fw-bold text-center">Mueve el alfiler rojo o pulsa sobre el mapa</p>
+              <div id="gps-status" class="small text-secondary mb-2 text-center">Punto predeterminado: Tarija Centro</div>
+              <div class="text-center">
+              <button type="button" id="btn-capturar-gps" class="btn btn-sm btn-outline-warning">
+                📍 Capturar Mi Ubicación Actual
+              </button>
+              </div>
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <label class="form-label small text-secondary">Latitud</label>
+                <input type="text" id="checkout-lat" class="form-control form-control-sm bg-dark text-light border-secondary font-monospace" value="-21.5355" readonly>
+              </div>
+              <div class="col-6">
+                <label class="form-label small text-secondary">Longitud</label>
+                <input type="text" id="checkout-lng" class="form-control form-control-sm bg-dark text-light border-secondary font-monospace" value="-64.7296" readonly>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label small text-light">Dirección y Referencia</label>
+              <input type="text" id="checkout-direccion" class="form-control bg-dark text-light border-secondary" placeholder="Ej. Calle Madrid #450, portón café" required>
+            </div>
+
+            <h6 class="brand-dorado fw-bold mt-4 mb-2">Datos para la Factura</h6>
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label small text-secondary">NIT o CI</label>
+                <input type="text" id="checkout-nit-ci" class="form-control bg-dark text-light border-secondary" placeholder="8492014" required>
+              </div>
+              <div class="col-6">
+                <label class="form-label small text-secondary">Razón Social</label>
+                <input type="text" id="checkout-razon-social" class="form-control bg-dark text-light border-secondary" placeholder="Nombre completo" required>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Columna Derecha: Pago y Confirmación -->
+        <div class="col-md-5">
+          <div class="card panel-admin p-4">
+            <h5 class="brand-dorado fw-bold mb-3">2. Estimación y Pago</h5>
+            
+            <div class="p-3 mb-3 rounded" style="background-color: #2b1437;">
+              <div class="small text-secondary">Tiempo estimado de arribo:</div>
+              <div class="fs-4 fw-bold text-success" id="checkout-tiempo-estimado">⏱️ 30 - 45 min</div>
+              <small class="text-secondary">Despacho desde bodega central</small>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label small text-light">Método de Pago</label>
+              <select id="checkout-metodo-pago" class="form-select bg-dark text-light border-secondary">
+                <option value="1">Contra Entrega QR (Simple)</option>
+                <option value="2">Efectivo contra entrega</option>
+                <option value="3">Transferencia Bancaria Directa</option>
+              </select>
+            </div>
+
+            <button type="submit" id="btn-confirmar-pedido" class="btn btn-tinto w-100 py-3 fw-bold text-uppercase">
+              Confirmar Pedido y Facturar
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </form>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="../assets/js/app.js"></script>
+  <script>
+    const sesionCheckout = sessionStorage.getItem("codigo_tinto_user");
+    if (!sesionCheckout) {
+      alert("Debes iniciar sesión para comprar.");
+      window.location.replace("login.html");
+    }
+
+    const coordenadasIniciales = [-21.5355, -64.7296];
+    const mapaCheckout = L.map("checkout-map").setView(coordenadasIniciales, 15);
+    const iconoMarcadorRojo = L.divIcon({
+      className: "",
+      html: '<div class="marcador-bolita-roja" aria-label="Ubicación seleccionada"></div>',
+      iconSize: [18, 18],
+      iconAnchor: [9, 18]
+    });
+    const marcadorEntrega = L.marker(coordenadasIniciales, {
+      draggable: true,
+      icon: iconoMarcadorRojo
+    }).addTo(mapaCheckout);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap"
+    }).addTo(mapaCheckout);
+
+    function actualizarCoordenadas(lat, lng, mensaje) {
+      const latitud = Number(lat).toFixed(6);
+      const longitud = Number(lng).toFixed(6);
+      $("#checkout-lat").val(latitud);
+      $("#checkout-lng").val(longitud);
+      $("#gps-status").html(`<span class="text-success">✓ ${mensaje}: ${latitud}, ${longitud}</span>`);
+    }
+
+    marcadorEntrega.on("dragend", function () {
+      const posicion = marcadorEntrega.getLatLng();
+      actualizarCoordenadas(posicion.lat, posicion.lng, "Punto de entrega seleccionado");
+    });
+
+    mapaCheckout.on("click", function (evento) {
+      marcadorEntrega.setLatLng(evento.latlng);
+      actualizarCoordenadas(evento.latlng.lat, evento.latlng.lng, "Punto de entrega seleccionado");
+    });
+
+    // Geolocalización Nativa HTML5
+    $("#btn-capturar-gps").on("click", function () {
+      const $status =$("#gps-status");
+      if ("geolocation" in navigator) {
+        $status.text("Detectando satélites...");
+        navigator.geolocation.getCurrentPosition(
+          function (pos) {
+            const lat = pos.coords.latitude.toFixed(6);
+            const lng = pos.coords.longitude.toFixed(6);
+            marcadorEntrega.setLatLng([lat, lng]);
+            mapaCheckout.setView([lat, lng], 17);
+            $("#checkout-lat").val(lat);
+            $("#checkout-lng").val(lng);
+            $status.html(`<span class="text-success">✓ Coordenadas fijadas: ${lat}, ${lng}</span>`);
+          },
+          function (err) {
+            $status.html('<span class="text-warning">Ubicación predeterminada (Tarija Centro) asignada.</span>');
+          }
+        );
+      } else {
+        $status.text("Tu navegador no soporta geolocalización.");
+      }
+    });
+  </script>
+</body>
+</html>

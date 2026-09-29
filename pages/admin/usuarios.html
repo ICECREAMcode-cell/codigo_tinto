@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Gestión de Cuentas | CÓDIGO TINTO</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/custom.css">
+  <style>
+    .form-switch .form-check-input {
+      width: 2.7em;
+      height: 1.4em;
+      cursor: pointer;
+    }
+    .form-switch .form-check-input:checked {
+      background-color: #198754;
+      border-color: #198754;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top">
+    <div class="container-fluid px-4">
+      <a class="navbar-brand fw-bold brand-dorado" href="../../index.html">
+        🍷 CÓDIGO TINTO <span class="badge bg-danger ms-2 fs-6" id="badge-rol-actual">USUARIOS</span>
+      </a>
+      <div class="d-flex align-items-center gap-2">
+        <a href="dashboard.html" class="btn btn-outline-light btn-sm">📊 Dashboard</a>
+        <a href="productos-crud.html" class="btn btn-outline-light btn-sm">📦 Catálogo</a>
+        <a href="pedidos-envios.html" class="btn btn-outline-light btn-sm">🚚 Despachos</a>
+        <button id="btn-logout" class="btn btn-danger btn-sm">Salir</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <div>
+        <h3 class="fw-bold text-white mb-0">Gestión de Cuentas y Accesos</h3>
+        <p class="text-secondary small mb-0">Control de estados mediante interruptores (Toggle) y soporte técnico.</p>
+      </div>
+      <button class="btn btn-tinto btn-sm" onclick="cargarUsuarios()">🔄 Recargar Cuentas</button>
+    </div>
+
+    <!-- TABLA 1: ADMINISTRADORES (Solo visible para SEO) -->
+    <div class="card panel-admin p-4 shadow-sm mb-4 d-none" id="bloque-admins">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold text-warning mb-0">🛡️ Equipo Administrativo</h4>
+        <span class="badge bg-danger">Control Exclusivo SEO</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-dark-custom align-middle" id="tabla-admins">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Usuario</th>
+              <th>Correo</th>
+              <th>Teléfono</th>
+              <th>Rol</th>
+              <th>Estado</th>
+              <th>Baja / Activo</th>
+              <th>Soporte</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TABLA 2: CLIENTES / USUARIOS REGULARES (Visible para SEO y Admin) -->
+    <div class="card panel-admin p-4 shadow-sm" id="bloque-clientes">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold text-white mb-0">👥 Clientes Registrados</h4>
+        <span class="badge bg-secondary">Venta de Bebidas</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-dark-custom align-middle" id="tabla-clientes">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Usuario</th>
+              <th>Correo</th>
+              <th>CI</th>
+              <th>Teléfono</th>
+              <th>Estado</th>
+              <th>Baja / Activo</th>
+              <th>Soporte y Actividad</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE SOPORTE: Historial de Compras, Reseñas y Clave Temporal -->
+  <div class="modal fade" id="modalSoporte" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content bg-dark text-light border-secondary">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title fw-bold text-warning" id="modalSoporteTitulo">Ficha de Usuario</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Reset de contraseña segura -->
+          <div class="p-3 mb-4 rounded" style="background: #23122c; border: 1px dashed var(--color-dorado);">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <div>
+                <strong>Acceso y Seguridad:</strong>
+                <div class="small text-secondary">Las contraseñas no se pueden ver por privacidad. Puedes emitir una temporal si el usuario la olvidó.</div>
+              </div>
+              <button class="btn btn-outline-warning btn-sm" id="btn-generar-temp">🔑 Generar Clave Temporal</button>
+            </div>
+            <div id="resultado-clave-temp" class="mt-2 font-monospace text-success fw-bold"></div>
+          </div>
+
+          <h6 class="fw-bold text-white">📦 Historial de Pedidos</h6>
+          <div class="table-responsive mb-3">
+            <table class="table table-sm table-dark-custom" id="tabla-soporte-pedidos">
+              <thead><tr><th>#</th><th>Fecha</th><th>Total</th><th>Estado</th><th>Destino</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <h6 class="fw-bold text-white">⭐ Reseñas Dejadas</h6>
+          <div class="table-responsive">
+            <table class="table table-sm table-dark-custom" id="tabla-soporte-resenas">
+              <thead><tr><th>Producto</th><th>Puntos</th><th>Comentario</th><th>Fecha</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../../assets/js/app.js"></script>
+  <script>
+    const usuarioSesion = JSON.parse(sessionStorage.getItem("codigo_tinto_user"));
+    let usuarioSeleccionadoId = null;
+
+    if (!usuarioSesion || (usuarioSesion.Rol !== "Admin" && usuarioSesion.Rol !== "SEO")) {
+      alert("Acceso denegado: solo personal administrativo.");
+      window.location.href = "../login.html";
+    }
+
+    $(document).ready(function () {$("#badge-rol-actual").text(usuarioSesion.Rol.toUpperCase());
+
+      // Si es SEO, mostramos la tabla de administradores
+      if (usuarioSesion.Rol === "SEO") {
+        $("#bloque-admins").removeClass("d-none");
+      }
+
+      cargarUsuarios();
+
+      // INTERRUPTOR TOGGLE (CAMBIAR ESTADO ACTIVO / INACTIVO)
+      $(document).on("change", ".toggle-estado-cuenta", function () {
+        const check = $(this);
+        const idUsuario = check.data("id");
+        const nuevoEstado = check.is(":checked") ? 1 : 0;
+        const textoAccion = nuevoEstado === 1 ? "reactivar" : "dar de baja";
+
+        if (!confirm(`¿Confirmas ${textoAccion} la cuenta #${idUsuario}?`)) {
+          check.prop("checked", !check.is(":checked")); // Revertir si cancela
+          return;
+        }
+
+        $.ajax({
+          url: `${window.API_BASE}auth.php?accion=cambiar_estado_usuario`,
+          method: "POST",
+          contentType: "application/json",
+          data: JSON.stringify({
+            id_usuario: idUsuario,
+            activo: nuevoEstado,
+            solicitante_id: usuarioSesion.id
+          }),
+          success: function (res) {
+            if (res.status === "ok") {
+              cargarUsuarios();
+            } else {
+              alert("Error: " + res.mensaje);
+              check.prop("checked", !check.is(":checked"));
+            }
+          },
+          error: function () {
+            alert("Error de comunicación con el servidor.");
+            check.prop("checked", !check.is(":checked"));
+          }
+        });
+      });
+
+      // BOTÓN SOPORTE (ABRIR MODAL DE ACTIVIDAD)
+      $(document).on("click", ".btn-ver-soporte", function () {
+        usuarioSeleccionadoId = $(this).data("id");
+        const username = $(this).data("username");
+
+        $("#modalSoporteTitulo").text(`Soporte al Usuario: ${username} (#${usuarioSeleccionadoId})`);
+        $("#resultado-clave-temp").text("");
+
+        $.ajax({
+          url: `${window.API_BASE}auth.php?accion=historial_soporte&cuenta_id=${usuarioSeleccionadoId}`,
+          method: "GET",
+          success: function (res) {
+            if (res.status === "ok") {
+              // Llenar pedidos
+              const $tbPed =$("#tabla-soporte-pedidos tbody").empty();
+              if (res.pedidos.length === 0) {
+                $tbPed.append('<tr><td colspan="5" class="text-center text-muted">Sin compras registradas.</td></tr>');
+              } else {
+                res.pedidos.forEach(p => {
+                  $tbPed.append(`
+                    <tr>
+                      <td>#${p.id_pedido}</td>
+                      <td>${p.fecha_pedido.substring(0, 10)}</td>
+                      <td class="text-warning">Bs. ${parseFloat(p.total).toFixed(2)}</td>
+                      <td><span class="badge ${p.estado === 'Entregado' ? 'bg-success' : 'bg-warning text-dark'}">${p.estado}</span></td>
+                      <td class="small text-truncate" style="max-width: 150px;">${p.direccion_referencia}</td>
+                    </tr>
+                  `);
+                });
+              }
+
+              // Llenar reseñas
+              const $tbRes =$("#tabla-soporte-resenas tbody").empty();
+              if (res.resenas.length === 0) {
+                $tbRes.append('<tr><td colspan="4" class="text-center text-muted">No ha publicado reseñas.</td></tr>');
+              } else {
+                res.resenas.forEach(r => {
+                  $tbRes.append(`
+                    <tr>
+                      <td>${r.producto}</td>
+                      <td class="text-warning">${"★".repeat(r.estrellas)}</td>
+                      <td class="small">${r.comentario || 'Sin comentario escrito'}</td>
+                      <td class="small text-secondary">${r.fecha_resena.substring(0, 10)}</td>
+                    </tr>
+                  `);
+                });
+              }
+
+              const modal = new bootstrap.Modal(document.getElementById("modalSoporte"));
+              modal.show();
+            }
+          }
+        });
+      });
+
+      // GENERAR CLAVE TEMPORAL
+      $("#btn-generar-temp").on("click", function () {
+        if (!usuarioSeleccionadoId) return;
+        if (!confirm("Se sobreescribirá la clave actual del usuario con una clave temporal. ¿Continuar?")) return;
+
+        $.ajax({
+          url: `${window.API_BASE}auth.php?accion=reset_password_soporte`,
+          method: "POST",
+          contentType: "application/json",
+          data: JSON.stringify({ id_usuario: usuarioSeleccionadoId }),
+          success: function (res) {
+            if (res.status === "ok") {
+              $("#resultado-clave-temp").html(`Clave Temporal Asignada: <span class="badge bg-warning text-dark fs-6">${res.clave_temporal}</span> (Proporciónasela al cliente)`);
+            }
+          }
+        });
+      });
+    });
+
+    function cargarUsuarios() {
+      const $tbAdmins =$("#tabla-admins tbody").html('<tr><td colspan="8" class="text-center py-3 text-secondary">Cargando administradores...</td></tr>');
+      const $tbClientes =$("#tabla-clientes tbody").html('<tr><td colspan="8" class="text-center py-3 text-secondary">Cargando clientes...</td></tr>');
+
+      $.ajax({
+        url: `${window.API_BASE}auth.php?accion=listar_usuarios`,
+        method: "GET",
+        success: function (res) {
+          if (res.status === "ok") {
+            $tbAdmins.empty();$tbClientes.empty();
+
+            res.data.forEach(u => {
+              const estaActivo = parseInt(u.activo) === 1;
+              const badgeEstado = estaActivo 
+                ? '<span class="badge bg-success">Activo</span>' 
+                : '<span class="badge bg-danger">Inactivo</span>';
+
+              // Toggle switch
+              const toggleHtml = `
+                <div class="form-check form-switch d-inline-block">
+                  <input class="form-check-input toggle-estado-cuenta" type="checkbox" data-id="${u.id}" ${estaActivo ? 'checked' : ''} ${u.Rol === 'SEO' ? 'disabled' : ''}>
+                </div>
+              `;
+
+              const btnSoporte = `
+                <button class="btn btn-outline-info btn-sm btn-ver-soporte" data-id="${u.id}" data-username="${u.username}">
+                  🔍 Ver Actividad
+                </button>
+              `;
+
+              // Clasificación por tabla
+              if (u.Rol === "SEO" || u.Rol === "Admin") {
+                if (usuarioSesion.Rol === "SEO") {
+                  $tbAdmins.append(`
+                    <tr>
+                      <td><strong>#${u.id}</strong></td>
+                      <td class="text-light fw-bold">${u.username}</td>
+                      <td>${u.correo}</td>
+                      <td>${u.telefono || 'Sin tel.'}</td>
+                      <td><span class="badge ${u.Rol === 'SEO' ? 'bg-danger' : 'bg-warning text-dark'}">${u.Rol}</span></td>
+                      <td>${badgeEstado}</td>
+                      <td>${toggleHtml}</td>
+                      <td>${btnSoporte}</td>
+                    </tr>
+                  `);
+                }
+              } else {
+                $tbClientes.append(`
+                  <tr>
+                    <td><strong>#${u.id}</strong></td>
+                    <td class="text-light fw-bold">${u.username}</td>
+                    <td>${u.correo}</td>
+                    <td>${u.ci}</td>
+                    <td>${u.telefono || 'Sin tel.'}</td>
+                    <td>${badgeEstado}</td>
+                    <td>${toggleHtml}</td>
+                    <td>${btnSoporte}</td>
+                  </tr>
+                `);
+              }
+            });
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>

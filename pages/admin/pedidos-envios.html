@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Pedidos y Envíos GPS | CÓDIGO TINTO</title>
+  
+  <!-- Bootstrap 5 CSS CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/custom.css">
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top">
+    <div class="container-fluid px-4">
+      <a class="navbar-brand fw-bold brand-dorado" href="../../index.html">
+        🍷 CÓDIGO TINTO <span class="badge bg-danger ms-2 fs-6">LOGÍSTICA</span>
+      </a>
+      <div class="d-flex align-items-center gap-2">
+        <a href="dashboard.html" class="btn btn-outline-light btn-sm">📊 Dashboard</a>
+        <a href="productos-crud.html" class="btn btn-outline-light btn-sm">📦 Catálogo</a>
+        <a href="usuarios.html" class="btn btn-outline-light btn-sm">👥 Cuentas</a>
+        <a href="../catalogo.html" class="btn btn-outline-warning btn-sm">Tienda</a>
+        <button id="btn-logout" class="btn btn-danger btn-sm">Salir</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Contenedor Principal -->
+  <div class="container-fluid px-4 py-4">
+    <div class="card panel-admin p-4 shadow-sm">
+      <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+          <h3 class="fw-bold text-white mb-1">Mesa de Despachos y Envíos</h3>
+          <p class="text-secondary small mb-0">Rastreo de coordenadas GPS, tiempo estimado de entrega y actualización de estados.</p>
+        </div>
+        <div class="d-flex gap-2">
+          <select id="filtro-estado-envios" class="form-select form-select-sm bg-dark text-light border-secondary" style="width: 180px;">
+            <option value="todos">Todos los estados</option>
+            <option value="Pendiente">Pendiente</option>
+            <option value="En camino">En camino</option>
+            <option value="Entregado">Entregado</option>
+            <option value="Cancelado">Cancelado</option>
+          </select>
+          <button class="btn btn-tinto btn-sm" id="btn-refrescar-envios">🔄 Actualizar</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-dark-custom align-middle" id="tabla-pedidos-envios">
+          <thead>
+            <tr>
+              <th># Orden</th>
+              <th>Fecha y Hora</th>
+              <th>Cliente / Contacto</th>
+              <th>Comprobante / Pago</th>
+              <th>GPS / Dirección Referencial</th>
+              <th>Estimado</th>
+              <th>Total</th>
+              <th>Estado Actual</th>
+              <th>Acción Operativa</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Se llena dinámicamente -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts CDN -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../../assets/js/app.js"></script>
+  <script>
+    // Guardia de rol
+    const usuario = JSON.parse(sessionStorage.getItem("codigo_tinto_user"));
+    if (!usuario || (usuario.Rol !== "Admin" && usuario.Rol !== "SEO")) {
+      alert("Acceso restringido.");
+      window.location.href = "../login.html";
+    }
+
+    $(document).ready(function () {
+      cargarTablaEnvios();
+
+      $("#filtro-estado-envios, #btn-refrescar-envios").on("change click", function () {
+        cargarTablaEnvios($("#filtro-estado-envios").val());
+      });
+
+      // Modificación de Estado vía PUT
+      $(document).on("change", ".select-estado-logistica", function () {
+        const idPedido = $(this).data("id");
+        const nuevoEstado = $(this).val();
+
+        $.ajax({
+          url: `${window.API_BASE}pedidos.php`,
+          method: "PUT",
+          contentType: "application/json",
+          data: JSON.stringify({
+            id_pedido: idPedido,
+            estado: nuevoEstado
+          }),
+          success: function (res) {
+            if (res.status === "ok") {
+              alert(`Orden #${idPedido} cambió de estado a: "${nuevoEstado}"`);
+              cargarTablaEnvios($("#filtro-estado-envios").val());
+            } else {
+              alert("Error al actualizar: " + res.mensaje);
+            }
+          }
+        });
+      });
+    });
+
+    function cargarTablaEnvios(estado = "todos") {
+      const $tbody =$("#tabla-pedidos-envios tbody");
+      $tbody.html('<tr><td colspan="9" class="text-center py-4 text-secondary">Consultando órdenes y GPS...</td></tr>');
+
+      $.ajax({
+        url: `${window.API_BASE}pedidos.php?estado=${estado}`,
+        method: "GET",
+        success: function (res) {
+          $tbody.empty();
+          if (res.status !== "ok" || res.data.length === 0) {
+            $tbody.html('<tr><td colspan="9" class="text-center py-4 text-muted">No se registran despachos para este filtro.</td></tr>');
+            return;
+          }
+
+          res.data.forEach(p => {
+            const mapsLink = (p.latitud && p.longitud)
+              ? `<a href="https://www.google.com/maps?q=${p.latitud},${p.longitud}" target="_blank" class="btn btn-outline-info btn-sm py-0 px-2">📍 Abrir GPS</a>`
+              : '<span class="text-muted small">Sin datos GPS</span>';
+
+            let badgeColor = "bg-warning text-dark";
+            if (p.estado === "En camino") badgeColor = "bg-primary";
+            if (p.estado === "Entregado") badgeColor = "bg-success";
+            if (p.estado === "Cancelado") badgeColor = "bg-danger";
+
+            $tbody.append(`
+              <tr>
+                <td><strong class="text-white">#${p.id_pedido}</strong></td>
+                <td class="small text-secondary">${p.fecha_pedido.substring(0, 16)}</td>
+                <td>
+                  <div class="fw-bold text-light">${p.username}</div>
+                  <small class="text-muted">📞 ${p.telefono || 'Sin teléfono'}</small>
+                </td>
+                <td>
+                  <span class="badge bg-dark border border-secondary">${p.nro_factura || 'S/N'}</span>
+                  <div class="small text-secondary">${p.metodo_pago}</div>
+                </td>
+                <td>
+                  ${mapsLink}
+                  <div class="small text-secondary text-truncate" style="max-width: 180px;" title="${p.direccion_referencia}">
+                    ${p.direccion_referencia}
+                  </div>
+                </td>
+                <td class="text-info">${p.tiempo_estimado_min} min</td>
+                <td class="fw-bold text-warning">Bs. ${parseFloat(p.total).toFixed(2)}</td>
+                <td><span class="badge ${badgeColor}">${p.estado}</span></td>
+                <td>
+                  <select class="form-select form-select-sm bg-dark text-light border-secondary select-estado-logistica" data-id="${p.id_pedido}">
+                    <option value="Pendiente" ${p.estado === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
+                    <option value="En camino" ${p.estado === 'En camino' ? 'selected' : ''}>En camino</option>
+                    <option value="Entregado" ${p.estado === 'Entregado' ? 'selected' : ''}>Entregado</option>
+                    <option value="Cancelado" ${p.estado === 'Cancelado' ? 'selected' : ''}>Cancelado</option>
+                  </select>
+                </td>
+              </tr>
+            `);
+          });
+        }
+      });
+    }
+  </script>
+</body>
+</html>

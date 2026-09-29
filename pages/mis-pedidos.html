@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mis Pedidos — CÓDIGO TINTO</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/custom.css">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top">
+    <div class="container">
+      <a class="navbar-brand fw-bold brand-dorado" href="../index.html">🍷 CÓDIGO TINTO</a>
+      <div class="d-flex align-items-center gap-2">
+        <a href="../index.html" class="btn btn-outline-light btn-sm">🏠 Inicio</a>
+        <a href="catalogo.html" class="btn btn-outline-warning btn-sm">Bodega</a>
+        <div id="nav-auth-container" class="d-flex align-items-center gap-2"></div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container py-5" style="max-width: 850px;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h2 class="fw-bold text-white mb-0">📦 Mis Pedidos y Calificaciones</h2>
+        <p class="text-secondary small mb-0">Rastreo de entregas y valoración de tus botellas.</p>
+      </div>
+      <button class="btn btn-outline-secondary btn-sm" onclick="cargarMisPedidos()">🔄 Actualizar</button>
+    </div>
+
+    <!-- Lista Dinámica de Pedidos -->
+    <div id="contenedor-mis-pedidos">
+      <div class="text-center py-5 text-secondary">Cargando compras anteriores...</div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../assets/js/app.js"></script>
+  <script>
+    $(document).ready(function () {
+      cargarMisPedidos();
+    });
+
+    function cargarMisPedidos() {
+      const usuario = JSON.parse(sessionStorage.getItem("codigo_tinto_user"));
+      const $cont =$("#contenedor-mis-pedidos");
+
+      if (!usuario) {
+        $cont.html(`
+          <div class="alert panel-admin text-center py-4">
+            <h5 class="text-warning">Inicia sesión para ver tu historial</h5>
+            <a href="login.html" class="btn btn-tinto btn-sm mt-2">Ir a Iniciar Sesión</a>
+          </div>
+        `);
+        return;
+      }
+
+      $.ajax({
+        url: `${window.API_BASE}pedidos.php?cuenta_id=${usuario.id}`,
+        method: "GET",
+        dataType: "json",
+        success: function (res) {
+          $cont.empty();
+          if (res.status !== "ok" || res.data.length === 0) {
+            $cont.html('<div class="text-center py-5 text-muted">Aún no has realizado ningún pedido. <a href="catalogo.html" class="text-warning">Explorar bodega</a></div>');
+            return;
+          }
+
+          res.data.forEach(p => {
+            let badgeColor = "bg-warning text-dark";
+            if (p.estado === "En camino") badgeColor = "bg-primary";
+            if (p.estado === "Entregado") badgeColor = "bg-success";
+            if (p.estado === "Cancelado") badgeColor = "bg-danger";
+
+            let bloqueResena = "";
+            if (p.estado === "Entregado") {
+              bloqueResena = `
+                <div class="p-3 rounded mt-3" style="background: #24132e;">
+                  <label class="small text-secondary mb-1 d-block">¿Qué te pareció el vino? Califica tu experiencia:</label>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="fs-4 text-warning" style="cursor: pointer;" onclick="alert('¡Gracias por tu calificación de 5 estrellas!')">
+                      ★★★★★
+                    </span>
+                    <span class="small text-secondary">(Toca las estrellas para calificar)</span>
+                  </div>
+                </div>
+              `;
+            }
+
+            $cont.append(`
+              <div class="card card-vino p-4 mb-4 rounded-3 shadow-sm">
+                <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2 border-secondary">
+                  <div>
+                    <span class="fw-bold fs-5 text-white">Orden #${p.id_pedido}</span>
+                    <span class="badge ${badgeColor} ms-2">${p.estado}</span>
+                  </div>
+                  <span class="text-warning fw-bold fs-5">Bs. ${parseFloat(p.total).toFixed(2)}</span>
+                </div>
+                <div class="text-secondary small mb-1"><strong>Fecha:</strong> ${p.fecha_pedido}</div>
+                <div class="text-secondary small mb-2"><strong>Destino:</strong> ${p.direccion_referencia}</div>
+                
+                <div class="alert alert-dark border-secondary p-2 mb-0 small text-light d-flex justify-content-between align-items-center">
+                  <span>⏱️ Tiempo estimado: <strong>${p.tiempo_estimado_min} min</strong></span>
+                  <a href="factura.html?id_pedido=${p.id_pedido}" class="text-warning text-decoration-none fw-bold">Ver Factura Fiscal &rarr;</a>
+                </div>
+
+                ${bloqueResena}
+              </div>
+            `);
+          });
+        }
+      });
+    }
+  </script>
+</body>
+</html>

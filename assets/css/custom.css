@@ -1,0 +1,200 @@
+/* ============================================================
+   CÓDIGO TINTO — Estilos Globales Personalizados
+   Paleta: Borgoña Tinto, Oro Viejo y Fondo Oscuro
+============================================================ */
+
+:root {
+  --color-fondo-body: #0d0611;
+  --color-fondo-card: #170d1f;
+  --color-borde-card: #2e153a;
+  --color-primario-tinto: #5b0e24;
+  --color-primario-hover: #781330;
+  --color-dorado: #d4af37;
+  --color-dorado-suave: #f3e5ab;
+  --color-texto-muted: #a69bb0;
+}
+
+body {
+  background-color: var(--color-fondo-body);
+  color: #f8f9fa;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Navbar */
+.navbar-custom {
+  background-color: rgba(18, 8, 22, 0.96);
+  border-bottom: 1px solid var(--color-dorado);
+  backdrop-filter: blur(8px);
+}
+
+.brand-dorado {
+  color: var(--color-dorado) !important;
+  letter-spacing: 1px;
+}
+
+/* Botones Temáticos */
+.btn-tinto {
+  background-color: var(--color-primario-tinto);
+  color: #ffffff;
+  border: 1px solid var(--color-dorado);
+  transition: all 0.25s ease-in-out;
+}
+
+.btn-tinto:hover,
+.btn-tinto:focus {
+  background-color: var(--color-primario-hover);
+  color: #ffffff;
+  border-color: #fff;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+}
+
+.btn-outline-dorado {
+  color: var(--color-dorado);
+  border-color: var(--color-dorado);
+}
+
+.btn-outline-dorado:hover {
+  background-color: var(--color-dorado);
+  color: #120816;
+}
+
+/* Tarjetas de Producto */
+.card-vino {
+  background-color: var(--color-fondo-card);
+  border: 1px solid var(--color-borde-card);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-vino:hover {
+  transform: translateY(-5px);
+  border-color: var(--color-dorado);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+/* Contenedor de Imagen de Producto (para URLs o cadenas Base64) */
+.prod-img-wrap {
+  width: 100%;
+  height: 220px;
+  background-color: #09040c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+}
+
+.prod-img-wrap img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transition: transform 0.3s ease;
+}
+
+.card-vino:hover .prod-img-wrap img {
+  transform: scale(1.04);
+}
+
+/* Filtros y Paneles Laterales */
+.filter-box,
+.panel-admin {
+  background-color: #140b1a;
+  border: 1px solid var(--color-borde-card);
+  border-radius: 8px;
+}
+
+.inventory-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px 12px;
+  background-color: var(--color-fondo-card);
+  border: 1px solid var(--color-borde-card);
+  border-radius: 6px;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.inventory-metric span {
+  color: var(--color-texto-muted);
+  font-size: 0.85rem;
+}
+
+.inventory-metric strong {
+  color: #f8f9fa;
+  font-size: 1.1rem;
+}
+
+.inventory-metric.metric-neutral {
+  border-color: var(--color-borde-card);
+}
+
+.inventory-metric.metric-ok {
+  border-color: #198754;
+}
+
+.inventory-metric.metric-warning {
+  border-color: var(--color-dorado);
+}
+
+.inventory-metric.metric-danger {
+  border-color: #dc3545;
+}
+
+.inventory-metric.metric-danger strong {
+  color: #ff6b78;
+}
+
+.agotado-control {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+}
+
+.agotado-click-target {
+  position: absolute;
+  inset: 0;
+  cursor: not-allowed;
+}
+
+/* Tablas con fondo oscuro */
+.table-dark-custom {
+  background-color: var(--color-fondo-card);
+  color: #f8f9fa;
+  border-color: var(--color-borde-card);
+}
+
+.table-dark-custom th {
+  background-color: #1e1029;
+  color: var(--color-dorado);
+  border-bottom: 2px solid var(--color-dorado);
+}
+
+.table-dark-custom td {
+  background-color: var(--color-fondo-card);
+  border-color: var(--color-borde-card);
+  vertical-align: middle;
+}
+
+/* Estrellas de Calificación */
+.star-rating {
+  font-size: 1.4rem;
+  color: #6c757d;
+  cursor: pointer;
+}
+
+.star-rating span:hover,
+.star-rating span.active {
+  color: var(--color-dorado);
+}
+
+/* Footer pegado al final */
+footer {
+  margin-top: auto;
+  background-color: #08030b;
+  border-top: 1px solid #230d2a;
+}

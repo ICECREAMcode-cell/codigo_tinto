@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Dashboard General | CÓDIGO TINTO</title>
+  
+  <!-- Bootstrap 5 CSS CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/custom.css">
+</head>
+<body>
+
+  <!-- Navbar Admin -->
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top">
+    <div class="container-fluid px-4">
+      <a class="navbar-brand fw-bold brand-dorado" href="../../index.html">
+        🍷 CÓDIGO TINTO <span class="badge bg-danger ms-2 fs-6">PANEL</span>
+      </a>
+      <div class="d-flex align-items-center gap-2">
+        <a href="productos-crud.html" class="btn btn-outline-light btn-sm">📦 Catálogo</a>
+        <a href="usuarios.html" class="btn btn-outline-light btn-sm">👥 Cuentas</a>
+        <a href="pedidos-envios.html" class="btn btn-outline-light btn-sm">🚚 Despachos</a>
+        <a href="../catalogo.html" class="btn btn-outline-warning btn-sm">Tienda</a>
+        <button id="btn-logout" class="btn btn-danger btn-sm">Salir</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Métricas y Resumen -->
+  <div class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h2 class="fw-bold text-white mb-0">Tablero de Control</h2>
+        <p class="text-secondary small mb-0">Resumen operativo de ventas, logística e inventario en tiempo real.</p>
+      </div>
+      <button class="btn btn-tinto btn-sm" onclick="cargarMetricasDashboard()">🔄 Refrescar Datos</button>
+    </div>
+
+    <!-- Tarjetas de Métricas -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-3">
+        <div class="card panel-admin p-3 border-start border-4 border-warning">
+          <span class="text-secondary small fw-bold">VENTAS TOTALES (FACTURADAS)</span>
+          <h3 class="fw-bold text-warning mt-2 mb-0" id="dash-ventas-total">Bs. 0.00</h3>
+          <small class="text-muted" id="dash-total-facturas">0 comprobantes</small>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card panel-admin p-3 border-start border-4 border-primary">
+          <span class="text-secondary small fw-bold">PEDIDOS PENDIENTES / CAMINO</span>
+          <h3 class="fw-bold text-primary mt-2 mb-0" id="dash-pedidos-activos">0</h3>
+          <small class="text-muted">Por despachar y entregar</small>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card panel-admin p-3 border-start border-4 border-success">
+          <span class="text-secondary small fw-bold">ENTREGADOS EXITOSOS</span>
+          <h3 class="fw-bold text-success mt-2 mb-0" id="dash-pedidos-entregados">0</h3>
+          <small class="text-muted">Órdenes completadas</small>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card panel-admin p-3 border-start border-4 border-danger">
+          <span class="text-secondary small fw-bold">PRODUCTOS EN STOCK CRÍTICO</span>
+          <h3 class="fw-bold text-danger mt-2 mb-0" id="dash-stock-bajo">0</h3>
+          <small class="text-muted">Menos de 5 botellas</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Accesos Directos y Lista Rápida -->
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <div class="card panel-admin p-4 h-100">
+          <h5 class="fw-bold text-white mb-3">Últimas Órdenes Registradas</h5>
+          <div class="table-responsive">
+            <table class="table table-dark-custom table-sm align-middle" id="tabla-dash-ultimos-pedidos">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Cliente</th>
+                  <th>Total</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="4" class="text-center py-3 text-secondary">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <a href="pedidos-envios.html" class="btn btn-outline-secondary btn-sm mt-auto">Ver logística completa &rarr;</a>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="card panel-admin p-4 h-100">
+          <h5 class="fw-bold text-white mb-3">Alertas de Inventario Bajo</h5>
+          <div class="table-responsive">
+            <table class="table table-dark-custom table-sm align-middle" id="tabla-dash-alertas-stock">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Categoría</th>
+                  <th>Stock Actual</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="3" class="text-center py-3 text-secondary">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <a href="productos-crud.html" class="btn btn-outline-secondary btn-sm mt-auto">Gestionar inventario &rarr;</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts CDN -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../../assets/js/app.js?v=stock-admin-refresh-1"></script>
+  <script>
+    // Guardia de rol
+    const usuario = JSON.parse(sessionStorage.getItem("codigo_tinto_user"));
+    if (!usuario || (usuario.Rol !== "Admin" && usuario.Rol !== "SEO")) {
+      alert("Acceso denegado: solo personal autorizado.");
+      window.location.href = "../login.html";
+    }
+
+    $(document).ready(function () {
+      cargarMetricasDashboard();
+    });
+
+    $(window).on("focus", cargarMetricasDashboard);
+
+    function cargarMetricasDashboard() {
+      // 1. Obtener Pedidos y Facturación
+      $.ajax({
+        url: `${window.API_BASE}pedidos.php`,
+        method: "GET",
+        success: function (res) {
+          if (res.status === "ok") {
+            const pedidos = res.data;
+            let totalVentas = 0;
+            let facturasCobras = 0;
+            let activos = 0;
+            let entregados = 0;
+
+            pedidos.forEach(p => {
+              if (p.estado_pago === "PAGADO") {
+                totalVentas += parseFloat(p.total);
+                facturasCobras++;
+              }
+              if (p.estado === "Pendiente" || p.estado === "En camino") activos++;
+              if (p.estado === "Entregado") entregados++;
+            });
+
+            $("#dash-ventas-total").text(`Bs. ${totalVentas.toFixed(2)}`);
+            $("#dash-total-facturas").text(`${facturasCobras} facturas emitidas`);
+            $("#dash-pedidos-activos").text(activos);
+            $("#dash-pedidos-entregados").text(entregados);
+
+            // Cargar mini-tabla últimos pedidos
+            const $tbodyPed =$("#tabla-dash-ultimos-pedidos tbody").empty();
+            pedidos.slice(0, 5).forEach(p => {
+              $tbodyPed.append(`
+                <tr>
+                  <td><strong>#${p.id_pedido}</strong></td>
+                  <td>${p.username}</td>
+                  <td class="text-warning">Bs. ${parseFloat(p.total).toFixed(2)}</td>
+                  <td><span class="badge ${p.estado === 'Entregado' ? 'bg-success' : 'bg-warning text-dark'}">${p.estado}</span></td>
+                </tr>
+              `);
+            });
+          }
+        }
+      });
+
+      // 2. Obtener Productos y Alertas de Stock
+      $.ajax({
+        url: `${window.API_BASE}productos.php`,
+        method: "GET",
+        success: function (res) {
+          if (res.status === "ok") {
+            const productos = res.data;
+            let stockBajoCount = 0;
+            const $tbodyStock =$("#tabla-dash-alertas-stock tbody").empty();
+
+            productos.forEach(prod => {
+              if (prod.stock <= 5) {
+                stockBajoCount++;
+                $tbodyStock.append(`
+                  <tr>
+                    <td><strong>${prod.nombre}</strong></td>
+                    <td>${prod.categoria_nombre}</td>
+                    <td><span class="badge bg-danger">${prod.stock} disponibles</span></td>
+                  </tr>
+                `);
+              }
+            });
+
+            $("#dash-stock-bajo").text(stockBajoCount);
+            if (stockBajoCount === 0) {
+              $tbodyStock.html('<tr><td colspan="3" class="text-center py-2 text-success">Inventario con stock suficiente.</td></tr>');
+            }
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>

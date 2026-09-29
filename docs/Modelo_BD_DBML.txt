@@ -1,0 +1,162 @@
+CREATE DATABASE IF NOT EXISTS `codigo_tinto_db` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `codigo_tinto_db`;
+
+-- 1. ROLES
+CREATE TABLE IF NOT EXISTS `Roles` (
+  `Rol_id` INT AUTO_INCREMENT PRIMARY KEY,
+  `Rol` VARCHAR(50) NOT NULL,
+  `ver_productos` BOOLEAN DEFAULT TRUE,
+  `ver_registros` BOOLEAN DEFAULT FALSE,
+  `descargar_registros` BOOLEAN DEFAULT FALSE,
+  `subir_productos` BOOLEAN DEFAULT FALSE,
+  `ajustar_stock` BOOLEAN DEFAULT FALSE,
+  `editar_perfil` BOOLEAN DEFAULT TRUE,
+  `editar_productos` BOOLEAN DEFAULT FALSE,
+  `editar_permisos` BOOLEAN DEFAULT FALSE,
+  `eliminar_productos` BOOLEAN DEFAULT FALSE,
+  `crear_usuarios` BOOLEAN DEFAULT FALSE,
+  `eliminar_usuarios` BOOLEAN DEFAULT FALSE,
+  `eliminar_Admins` BOOLEAN DEFAULT FALSE,
+  `ver_pedidos_propios` BOOLEAN DEFAULT TRUE,
+  `gestionar_descuentos` BOOLEAN DEFAULT FALSE,
+  `gestionar_pedidos` BOOLEAN DEFAULT FALSE,
+  `gestionar_categorias` BOOLEAN DEFAULT FALSE,
+  `gestionar_temporadas` BOOLEAN DEFAULT FALSE,
+  `cancelar_pedidos` BOOLEAN DEFAULT TRUE,
+  `comprar_productos` BOOLEAN DEFAULT TRUE
+) ENGINE=InnoDB;
+
+-- 2. CUENTAS
+CREATE TABLE IF NOT EXISTS `Cuentas` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `username` VARCHAR(50) NOT NULL UNIQUE,
+  `correo` VARCHAR(50) NOT NULL UNIQUE,
+  `contrasena` VARCHAR(255) NOT NULL,
+  `ci` VARCHAR(20) NOT NULL UNIQUE,
+  `fecha_nacimiento` DATE NOT NULL,
+  `telefono` VARCHAR(20),
+  `creado_en` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `rol_id` INT NOT NULL,
+  `activo` BOOLEAN DEFAULT TRUE,
+  CONSTRAINT `fk_cuentas_roles` FOREIGN KEY (`rol_id`) REFERENCES `Roles`(`Rol_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+-- 3. CATEGORIAS
+CREATE TABLE IF NOT EXISTS `Categorias` (
+  `id_categoria` INT AUTO_INCREMENT PRIMARY KEY,
+  `nombre` VARCHAR(60) NOT NULL UNIQUE,
+  `slug` VARCHAR(60) NOT NULL,
+  `descripcion` VARCHAR(200)
+) ENGINE=InnoDB;
+
+-- 4. TEMPORADAS
+CREATE TABLE IF NOT EXISTS `Temporadas` (
+  `id_temporada` INT AUTO_INCREMENT PRIMARY KEY,
+  `nombre` VARCHAR(50) NOT NULL UNIQUE,
+  `descripcion` VARCHAR(200)
+) ENGINE=InnoDB;
+
+-- 5. PRODUCTOS
+CREATE TABLE IF NOT EXISTS `Productos` (
+  `id_producto` INT AUTO_INCREMENT PRIMARY KEY,
+  `id_categoria` INT NOT NULL,
+  `id_temporada` INT NOT NULL,
+  `nombre` VARCHAR(150) NOT NULL,
+  `descripcion` TEXT,
+  `cepa` VARCHAR(80),
+  `graduacion_alcoholica` DECIMAL(4,2),
+  `precio` DECIMAL(10,2) NOT NULL,
+  `stock` INT NOT NULL DEFAULT 0,
+  `imagen_url` MEDIUMTEXT NOT NULL,
+  `activo` BOOLEAN DEFAULT TRUE,
+  `creado_en` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_prod_cat` FOREIGN KEY (`id_categoria`) REFERENCES `Categorias`(`id_categoria`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_prod_temp` FOREIGN KEY (`id_temporada`) REFERENCES `Temporadas`(`id_temporada`) ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+-- 6. METODOS DE PAGO
+CREATE TABLE IF NOT EXISTS `MetodosPago` (
+  `id_metodo` INT AUTO_INCREMENT PRIMARY KEY,
+  `nombre` VARCHAR(60) NOT NULL,
+  `descripcion` VARCHAR(200),
+  `activo` BOOLEAN DEFAULT TRUE
+) ENGINE=InnoDB;
+
+-- 7. PEDIDOS
+CREATE TABLE IF NOT EXISTS `Pedidos` (
+  `id_pedido` INT AUTO_INCREMENT PRIMARY KEY,
+  `cuenta_id` INT NOT NULL,
+  `metodo_pago_id` INT NOT NULL,
+  `fecha_pedido` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `latitud` DECIMAL(10,8),
+  `longitud` DECIMAL(11,8),
+  `direccion_referencia` TEXT NOT NULL,
+  `tiempo_estimado_min` INT DEFAULT 35,
+  `estado` ENUM('Pendiente', 'En camino', 'Entregado', 'Cancelado') DEFAULT 'Pendiente',
+  `total` DECIMAL(10,2) NOT NULL,
+  CONSTRAINT `fk_ped_cuenta` FOREIGN KEY (`cuenta_id`) REFERENCES `Cuentas`(`id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_ped_pago` FOREIGN KEY (`metodo_pago_id`) REFERENCES `MetodosPago`(`id_metodo`) ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+-- 8. DETALLE DE PEDIDOS
+CREATE TABLE IF NOT EXISTS `DetallePedidos` (
+  `id_detalle` INT AUTO_INCREMENT PRIMARY KEY,
+  `id_pedido` INT NOT NULL,
+  `id_producto` INT NOT NULL,
+  `cantidad` INT NOT NULL,
+  `precio_unitario` DECIMAL(10,2) NOT NULL,
+  `subtotal` DECIMAL(10,2) NOT NULL,
+  CONSTRAINT `fk_det_ped` FOREIGN KEY (`id_pedido`) REFERENCES `Pedidos`(`id_pedido`) ON DELETE CASCADE,
+  CONSTRAINT `fk_det_prod` FOREIGN KEY (`id_producto`) REFERENCES `Productos`(`id_producto`) ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+-- 9. FACTURAS
+CREATE TABLE IF NOT EXISTS `Facturas` (
+  `id_factura` INT AUTO_INCREMENT PRIMARY KEY,
+  `id_pedido` INT NOT NULL UNIQUE,
+  `nro_factura` VARCHAR(50) NOT NULL UNIQUE,
+  `nit_ci` VARCHAR(25) NOT NULL,
+  `razon_social` VARCHAR(150) NOT NULL,
+  `fecha_emision` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `monto_total` DECIMAL(10,2) NOT NULL,
+  `estado_pago` ENUM('PAGADO', 'ANULADO') DEFAULT 'PAGADO',
+  CONSTRAINT `fk_fac_pedido` FOREIGN KEY (`id_pedido`) REFERENCES `Pedidos`(`id_pedido`) ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+-- 10. RESEÑAS
+CREATE TABLE IF NOT EXISTS `Resenas` (
+  `id_resena` INT AUTO_INCREMENT PRIMARY KEY,
+  `id_producto` INT NOT NULL,
+  `cuenta_id` INT NOT NULL,
+  `id_pedido` INT NOT NULL,
+  `estrellas` TINYINT NOT NULL CHECK (`estrellas` BETWEEN 1 AND 5),
+  `comentario` TEXT,
+  `fecha_resena` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_res_prod` FOREIGN KEY (`id_producto`) REFERENCES `Productos`(`id_producto`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_res_cuenta` FOREIGN KEY (`cuenta_id`) REFERENCES `Cuentas`(`id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_res_ped` FOREIGN KEY (`id_pedido`) REFERENCES `Pedidos`(`id_pedido`) ON UPDATE CASCADE,
+  UNIQUE KEY `uk_cliente_pedido_prod` (`cuenta_id`, `id_pedido`, `id_producto`)
+) ENGINE=InnoDB;
+
+-- INSERTS BASE
+INSERT INTO `Roles` (`Rol`, `ver_productos`, `ver_registros`, `descargar_registros`, `subir_productos`, `ajustar_stock`, `editar_perfil`, `editar_productos`, `editar_permisos`, `eliminar_productos`, `crear_usuarios`, `eliminar_usuarios`, `eliminar_Admins`, `ver_pedidos_propios`, `gestionar_descuentos`, `gestionar_pedidos`, `gestionar_categorias`, `gestionar_temporadas`, `cancelar_pedidos`, `comprar_productos`) VALUES
+('SEO', 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+('Admin', 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0),
+('Cliente', 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1);
+
+INSERT INTO `Temporadas` (`nombre`, `descripcion`) VALUES
+('Todo el año', 'Apto y recomendado para cualquier ocasión'),
+('Invierno', 'Vinos de gran cuerpo, reserva y notas a madera'),
+('Verano / Primavera', 'Bebidas frescas, singanis para cóctel y licores fríos'),
+('Otoño', 'Vino joven, encaja perfecto con dias soleados pero frescos de otoño');
+
+INSERT INTO `Categorias` (`nombre`, `slug`, `descripcion`) VALUES
+('Vinos Tintos', 'tinto', 'Variedades tintas tradicionales'),
+('Vinos Blancos', 'blanco', 'Vinos frescos y afrutados'),
+('Singanis de Altura', 'singani', 'Destilados de uva Moscatel'),
+('Licores Artesanales', 'licor', 'Maceraciones dulces y digestivos');
+
+INSERT INTO `MetodosPago` (`nombre`, `descripcion`) VALUES
+('Contra Entrega QR', 'Pago con QR bancario simple al repartidor'),
+('Efectivo', 'Pago en efectivo al momento de la entrega'),
+('Transferencia Bancaria', 'Depósito directo a cuenta oficial');

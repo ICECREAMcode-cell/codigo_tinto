@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Factura Oficial — CÓDIGO TINTO</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #1a0f21; color: #212529; font-family: 'Segoe UI', sans-serif; }
+    .invoice-card { background: #fff; max-width: 780px; margin: 30px auto; padding: 40px; border-radius: 8px; box-shadow: 0 5px 25px rgba(0,0,0,0.5); }
+    @media print {
+      body { background: #fff; }
+      .no-print { display: none !important; }
+      .invoice-card { box-shadow: none; margin: 0; padding: 0; max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container text-center pt-4 no-print">
+    <button class="btn btn-primary me-2" onclick="window.print()">🖨️ Imprimir Factura / PDF</button>
+    <a href="mis-pedidos.html" class="btn btn-warning me-2">📦 Seguir Mi Pedido</a>
+    <a href="../index.html" class="btn btn-outline-light">🏠 Volver a la Tienda</a>
+  </div>
+
+  <div class="invoice-card" id="area-factura">
+    <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
+      <div>
+        <h3 class="fw-bold mb-0 text-danger">🍷 CÓDIGO TINTO</h3>
+        <small class="text-muted">Bodega Comercial & Destilería Artesanal</small><br>
+        <small class="text-muted">NIT: 1029384750 • Tarija, Bolivia</small>
+      </div>
+      <div class="text-end">
+        <span class="badge bg-success" id="fac-estado">PAGADO</span>
+        <div class="fw-bold text-dark mt-1" id="fac-numero">FACT-CT-0000</div>
+        <div class="small text-muted" id="fac-fecha">Fecha: --/--/----</div>
+      </div>
+    </div>
+
+    <div class="row mb-4 small">
+      <div class="col-6">
+        <strong>Datos del Cliente:</strong><br>
+        Nombre / Razón Social: <span id="fac-razon">Consumidor Final</span><br>
+        CI / NIT: <span id="fac-nit">S/N</span><br>
+        Destino: <span id="fac-destino">Ubicación GPS</span>
+      </div>
+      <div class="col-6 text-end">
+        <strong>Despacho Logístico:</strong><br>
+        Tiempo estimado: <span id="fac-tiempo">35 minutos</span><br>
+        Método de Pago: <span id="fac-metodo">Contra Entrega QR</span>
+      </div>
+    </div>
+
+    <table class="table table-bordered table-sm mb-4" id="tabla-factura-items">
+      <thead class="table-light">
+        <tr>
+          <th>Cantidad</th>
+          <th>Descripción</th>
+          <th>Precio Unit.</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td colspan="4" class="text-center py-2 text-muted">Cargando comprobante fiscal...</td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <th colspan="3" class="text-end">Total Pagado:</th>
+          <th class="text-danger" id="fac-total">Bs. 0.00</th>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="border p-2 rounded bg-light small text-center text-muted">
+      "ESTA FACTURA CONTRIBUYE AL DESARROLLO DEL ESTADO PLURINACIONAL DE BOLIVIA. LEY N° 259."
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../assets/js/app.js"></script>
+  <script>
+    $(document).ready(function () {
+      const urlParams = new URLSearchParams(window.location.search);
+      const idPedido = urlParams.get("id_pedido");
+
+      if (!idPedido) {
+        $("#fac-numero").text("ERROR: No se indicó Nro de Pedido");
+        return;
+      }
+
+      $.ajax({
+        url: `${window.API_BASE}pedidos.php`,
+        method: "GET",
+        dataType: "json",
+        success: function (res) {
+          if (res.status === "ok") {
+            const pedido = res.data.find(p => parseInt(p.id_pedido) === parseInt(idPedido));
+            if (pedido) {
+              $("#fac-numero").text(pedido.nro_factura || `FACT-#${pedido.id_pedido}`);
+              $("#fac-fecha").text(`Fecha: ${pedido.fecha_pedido.substring(0, 10)}`);
+              $("#fac-razon").text(pedido.username);
+              $("#fac-destino").text(pedido.direccion_referencia);
+              $("#fac-tiempo").text(`${pedido.tiempo_estimado_min} minutos`);
+              $("#fac-metodo").text(pedido.metodo_pago);
+              $("#fac-total").text(`Bs. ${parseFloat(pedido.total).toFixed(2)}`);
+
+              const $tbody =$("#tabla-factura-items tbody").empty();
+              $tbody.append(`
+                <tr>
+                  <td>1</td>
+                  <td>Despacho de Bebidas Seleccionadas (Orden #${pedido.id_pedido})</td>
+                  <td>Bs. ${parseFloat(pedido.total).toFixed(2)}</td>
+                  <td>Bs. ${parseFloat(pedido.total).toFixed(2)}</td>
+                </tr>
+              `);
+            }
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>
