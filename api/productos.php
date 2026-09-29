@@ -1,7 +1,30 @@
 <?php
 require_once 'db.php';
+session_start();
 
 $metodo = $_SERVER['REQUEST_METHOD'];
+if ($metodo === 'POST' && ($_GET['accion'] ?? '') === 'actualizar') {
+    $metodo = 'PUT';
+}
+
+function exigirGestionProductos(PDO $pdo): void
+{
+    $cuentaId = (int)($_SESSION['cuenta_id'] ?? 0);
+    if ($cuentaId <= 0) {
+        http_response_code(401);
+        echo json_encode(["status" => "error", "mensaje" => "Debes iniciar sesión para gestionar productos."]);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("SELECT r.Rol FROM cuentas c INNER JOIN roles r ON c.rol_id = r.Rol_id WHERE c.id = ? AND c.activo = 1 LIMIT 1");
+    $stmt->execute([$cuentaId]);
+    $usuario = $stmt->fetch();
+    if (!$usuario || !in_array($usuario['Rol'], ['Admin', 'SEO'], true)) {
+        http_response_code(403);
+        echo json_encode(["status" => "error", "mensaje" => "No tienes permisos para gestionar productos."]);
+        exit;
+    }
+}
 
 // 1. GET: LISTAR PRODUCTOS (Para index.html, catalogo.html y admin)
 if ($metodo === 'GET') {
@@ -13,7 +36,7 @@ if ($metodo === 'GET') {
     $sql = "SELECT p.*, 
                    c.nombre AS categoria_nombre, c.slug AS categoria_slug, 
                    t.nombre AS temporada_nombre,
-                   COALESCE(AVG(r.estrellas), 5.0) AS rating_promedio,
+                   COALESCE(AVG(r.estrellas), 0.0) AS rating_promedio,
                    COUNT(r.id_resena) AS total_resenas
             FROM productos p
             INNER JOIN categorias c ON p.id_categoria = c.id_categoria
@@ -34,8 +57,17 @@ if ($metodo === 'GET') {
     }
 
     if (!empty($buscar)) {
-        $sql .= " AND (p.nombre LIKE :buscar OR p.descripcion LIKE :buscar OR p.cepa LIKE :buscar)";
-        $params[':buscar'] = "%$buscar%";
+        $sql .= " AND (p.nombre LIKE :buscar_nombre
+                    OR p.descripcion LIKE :buscar_descripcion
+                    OR p.cepa LIKE :buscar_cepa
+                    OR c.nombre LIKE :buscar_categoria
+                    OR t.nombre LIKE :buscar_temporada)";
+        $terminoBusqueda = "%$buscar%";
+        $params[':buscar_nombre'] = $terminoBusqueda;
+        $params[':buscar_descripcion'] = $terminoBusqueda;
+        $params[':buscar_cepa'] = $terminoBusqueda;
+        $params[':buscar_categoria'] = $terminoBusqueda;
+        $params[':buscar_temporada'] = $terminoBusqueda;
     }
 
     $sql .= " GROUP BY p.id_producto ORDER BY p.id_producto DESC";
@@ -50,6 +82,7 @@ if ($metodo === 'GET') {
 
 // 2. POST: SUBIR NUEVO PRODUCTO (Panel Admin con imagen Base64)
 if ($metodo === 'POST') {
+    exigirGestionProductos($pdo);
     $datos = json_decode(file_get_contents("php://input"), true) ?? $_POST;
 
     $id_cat     = intval($datos['id_categoria'] ?? 0);
@@ -109,6 +142,7 @@ if ($metodo === 'POST') {
 
 // 3. PUT: ACTUALIZAR PRODUCTO (Dashboard Admin)
 if ($metodo === 'PUT') {
+    exigirGestionProductos($pdo);
     $datos = json_decode(file_get_contents("php://input"), true);
     $id_producto = intval($_GET['id'] ?? $datos['id_producto'] ?? 0);
 
@@ -148,8 +182,14 @@ if ($metodo === 'PUT') {
     }
 
     if (empty($imagen_b64)) {
-        echo json_encode(["status" => "error", "mensaje" => "Debe conservar o cargar una imagen válida para el producto."]);
-        exit;
+        $stmtImagen = $pdo->prepare("SELECT imagen_url FROM productos WHERE id_producto = ? AND activo = 1 LIMIT 1");
+        $stmtImagen->execute([$id_producto]);
+        $productoActual = $stmtImagen->fetch();
+        if (!$productoActual) {
+            echo json_encode(["status" => "error", "mensaje" => "Producto no encontrado."]);
+            exit;
+        }
+        $imagen_b64 = $productoActual['imagen_url'];
     }
 
     $checkDuplicado = $pdo->prepare("SELECT id_producto FROM productos WHERE activo = 1 AND id_producto != ? AND LOWER(nombre) = LOWER(?) LIMIT 1");
@@ -168,6 +208,7 @@ if ($metodo === 'PUT') {
 
 // 4. DELETE: DAR DE BAJA
 if ($metodo === 'DELETE') {
+    exigirGestionProductos($pdo);
     $id_producto = $_GET['id'] ?? null;
     if (!$id_producto) {
         echo json_encode(["status" => "error", "mensaje" => "ID no proporcionado."]);

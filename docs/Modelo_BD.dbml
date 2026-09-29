@@ -1,0 +1,134 @@
+Project codigo_tinto_db {
+  database_type: 'MySQL'
+}
+
+Table roles {
+  Rol_id int [pk, increment]
+  Rol varchar(50) [not null]
+  ver_productos boolean [default: true]
+  ver_registros boolean [default: false]
+  descargar_registros boolean [default: false]
+  subir_productos boolean [default: false]
+  ajustar_stock boolean [default: false]
+  editar_perfil boolean [default: true]
+  editar_productos boolean [default: false]
+  editar_permisos boolean [default: false]
+  eliminar_productos boolean [default: false]
+  crear_usuarios boolean [default: false]
+  eliminar_usuarios boolean [default: false]
+  eliminar_Admins boolean [default: false]
+  ver_pedidos_propios boolean [default: true]
+  gestionar_descuentos boolean [default: false]
+  gestionar_pedidos boolean [default: false]
+  gestionar_categorias boolean [default: false]
+  gestionar_temporadas boolean [default: false]
+  cancelar_pedidos boolean [default: true]
+  comprar_productos boolean [default: true]
+}
+
+Table cuentas {
+  id int [pk, increment]
+  username varchar(50) [not null, unique]
+  correo varchar(50) [not null, unique]
+  contrasena varchar(255) [not null]
+  ci varchar(20) [not null, unique]
+  fecha_nacimiento date [not null]
+  telefono varchar(20)
+  creado_en timestamp [default: `CURRENT_TIMESTAMP`]
+  rol_id int [not null]
+  activo boolean [default: true]
+}
+
+Table categorias {
+  id_categoria int [pk, increment]
+  nombre varchar(60) [not null, unique]
+  slug varchar(60) [not null]
+  descripcion varchar(200)
+}
+
+Table temporadas {
+  id_temporada int [pk, increment]
+  nombre varchar(50) [not null, unique]
+  descripcion varchar(200)
+}
+
+Table productos {
+  id_producto int [pk, increment]
+  id_categoria int [not null]
+  id_temporada int [not null]
+  nombre varchar(150) [not null]
+  descripcion text
+  cepa varchar(80)
+  graduacion_alcoholica decimal(4,2)
+  precio decimal(10,2) [not null]
+  stock int [not null, default: 0]
+  imagen_url text [not null]
+  activo boolean [default: true]
+  creado_en timestamp [default: `CURRENT_TIMESTAMP`]
+}
+
+Table metodospago {
+  id_metodo int [pk, increment]
+  nombre varchar(60) [not null]
+  descripcion varchar(200)
+  activo boolean [default: true]
+}
+
+Table pedidos {
+  id_pedido int [pk, increment]
+  cuenta_id int [not null]
+  metodo_pago_id int [not null]
+  fecha_pedido timestamp [default: `CURRENT_TIMESTAMP`]
+  latitud decimal(10,8)
+  longitud decimal(11,8)
+  direccion_referencia text [not null]
+  tiempo_estimado_min int [default: 35]
+  estado varchar(20) [default: 'Pendiente']
+  total decimal(10,2) [not null]
+}
+
+Table detallepedidos {
+  id_detalle int [pk, increment]
+  id_pedido int [not null]
+  id_producto int [not null]
+  cantidad int [not null]
+  precio_unitario decimal(10,2) [not null]
+  subtotal decimal(10,2) [not null]
+}
+
+Table facturas {
+  id_factura int [pk, increment]
+  id_pedido int [not null, unique]
+  nro_factura varchar(50) [not null, unique]
+  nit_ci varchar(25) [not null]
+  razon_social varchar(150) [not null]
+  fecha_emision timestamp [default: `CURRENT_TIMESTAMP`]
+  monto_total decimal(10,2) [not null]
+  estado_pago varchar(10) [default: 'PAGADO']
+}
+
+Table resenas {
+  id_resena int [pk, increment]
+  id_producto int [not null]
+  cuenta_id int [not null]
+  id_pedido int [not null]
+  estrellas int [not null]
+  comentario text
+  fecha_resena timestamp [default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (cuenta_id, id_pedido, id_producto) [unique]
+  }
+}
+
+Ref: cuentas.rol_id > roles.Rol_id
+Ref: productos.id_categoria > categorias.id_categoria
+Ref: productos.id_temporada > temporadas.id_temporada
+Ref: pedidos.cuenta_id > cuentas.id
+Ref: pedidos.metodo_pago_id > metodospago.id_metodo
+Ref: detallepedidos.id_pedido > pedidos.id_pedido [delete: cascade]
+Ref: detallepedidos.id_producto > productos.id_producto
+Ref: facturas.id_pedido - pedidos.id_pedido
+Ref: resenas.id_producto > productos.id_producto
+Ref: resenas.cuenta_id > cuentas.id
+Ref: resenas.id_pedido > pedidos.id_pedido

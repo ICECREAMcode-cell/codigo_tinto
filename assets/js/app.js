@@ -41,7 +41,7 @@ $(document).ready(function () {
     const id = parseInt(btn.data("id"));
     const nombre = card.find(".prod-nombre").text().trim();
     const precio = parseFloat(btn.data("precio")) || 0;
-    const imagen = card.find("img").attr("src") || "assets/img/productos/default.jpg";
+    const imagen = card.find("img").attr("src") || obtenerRutaRelativa("assets/img/productos/default.svg");
     const stockDisponible = parseInt(card.find(".cant-prod").attr("max")) || 0;
     
     // Obtiene la cantidad del input numérico dentro de la tarjeta
@@ -350,8 +350,11 @@ function cargarProductosDesdeBD(categoria = "todos", epoca = "todas", buscar = "
       }
 
       productos.forEach((p) => {
-        const ratingNum = parseFloat(p.rating_promedio).toFixed(1);
-        const estrellasHtml = "★".repeat(Math.round(p.rating_promedio)) + "☆".repeat(5 - Math.round(p.rating_promedio));
+        const ratingValor = Number(p.rating_promedio) || 0;
+        const ratingNum = ratingValor.toFixed(1);
+        const estrellasHtml = "★".repeat(Math.round(ratingValor)) + "☆".repeat(5 - Math.round(ratingValor));
+        const ratingTexto = Number(p.total_resenas) > 0 ? `${ratingNum}/5 estrellas` : "Sin reseñas";
+        const imagenProducto = p.imagen_url || obtenerRutaRelativa("assets/img/productos/default.svg");
 
         const stock = Math.max(0, parseInt(p.stock, 10) || 0);
         const sinStock = stock === 0;
@@ -362,11 +365,12 @@ function cargarProductosDesdeBD(categoria = "todos", epoca = "todas", buscar = "
             <div class="card card-vino h-100 p-3 rounded-3 d-flex flex-column">
               <span class="badge bg-secondary mb-2 w-auto align-self-start">${p.categoria_nombre}</span>
               <div class="prod-img-wrap mb-2">
-                <img src="${p.imagen_url}" alt="${p.nombre}" loading="lazy">
+                <img src="${imagenProducto}" alt="${p.nombre}" loading="lazy">
               </div>
               <h5 class="fw-bold text-white mb-1 prod-nombre">${p.nombre}</h5>
+              <a class="small text-warning text-decoration-none mb-2" href="${window.location.pathname.includes("/pages/") ? "producto-detalle.html" : "pages/producto-detalle.html"}?id=${p.id_producto}">Ver detalle del producto</a>
               <p class="text-secondary small mb-2 flex-grow-1">${p.descripcion || "Vino tarijeño de alta calidad."}</p>
-              <div class="text-warning small mb-2" title="${ratingNum}/5 estrellas">
+              <div class="text-warning small mb-2" title="${ratingTexto}">
                 ${estrellasHtml} <span class="text-muted">(${p.total_resenas || 0})</span>
               </div>
               
@@ -495,11 +499,6 @@ function configurarSubidaProductoConCanvas() {
       return;
     }
 
-    if (!imagenBase64Procesada && idEditando) {
-      alert("La imagen del producto se conserva en la edición actual.");
-      return;
-    }
-
     const payload = {
       id_producto: idEditando ? parseInt(idEditando) : undefined,
       id_categoria: parseInt($("#admin-cat").val()),
@@ -510,11 +509,13 @@ function configurarSubidaProductoConCanvas() {
       graduacion_alcoholica: parseFloat($("#admin-grad").val()) || 14.0,
       precio: parseFloat($("#admin-precio").val()) || 0,
       stock: parseInt($("#admin-stock").val()) || 0,
-      imagen_url: imagenBase64Procesada
+      imagen_url: imagenBase64Procesada || ""
     };
 
-    const method = idEditando ? "PUT" : "POST";
-    const url = idEditando ? `${window.API_BASE}productos.php?id=${idEditando}` : `${window.API_BASE}productos.php`;
+    const method = "POST";
+    const url = idEditando
+      ? `${window.API_BASE}productos.php?id=${idEditando}&accion=actualizar`
+      : `${window.API_BASE}productos.php`;
 
     $.ajax({
       url: url,
@@ -534,8 +535,8 @@ function configurarSubidaProductoConCanvas() {
           alert("Error: " + res.mensaje);
         }
       },
-      error: function () {
-        alert("Error de red al guardar el producto.");
+      error: function (xhr) {
+        alert(xhr.responseJSON?.mensaje || `Error al guardar el producto (HTTP ${xhr.status || "sin respuesta"}).`);
       }
     });
   });
@@ -562,7 +563,7 @@ function configurarSubidaProductoConCanvas() {
         $("#admin-cepa").val(producto.cepa || "");
         $("#admin-grad").val(producto.graduacion_alcoholica || 14.0);
         $("#admin-desc").val(producto.descripcion || "");
-        imagenBase64Procesada = producto.imagen_url || "";
+        imagenBase64Procesada = "";
 
         if (producto.imagen_url) {
           $("#preview-subida").attr("src", producto.imagen_url).removeClass("d-none");

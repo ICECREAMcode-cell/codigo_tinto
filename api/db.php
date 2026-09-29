@@ -1,13 +1,22 @@
 <?php
-// 1. Mostrar errores en pantalla para saber qué pasa exactamente
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+// No exponer detalles internos ni credenciales mediante respuestas HTTP.
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
 error_reporting(E_ALL);
 
-header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 header('Content-Type: application/json; charset=UTF-8');
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ]);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -35,7 +44,7 @@ try {
     http_response_code(500);
     echo json_encode([
         "status" => "error",
-        "mensaje" => "Error PDO: " . $e->getMessage()
+        "mensaje" => "No se pudo conectar con la base de datos."
     ]);
     exit;
 }

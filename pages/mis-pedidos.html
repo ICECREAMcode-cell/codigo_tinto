@@ -42,6 +42,54 @@
       cargarMisPedidos();
     });
 
+    function escapeHtml(valor) {
+      return String(valor ?? "").replace(/[&<>'"]/g, function (caracter) {
+        return {
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "'": "&#39;",
+          '"': "&quot;"
+        }[caracter];
+      });
+    }
+
+    function construirBloqueResena(pedido) {
+      if (pedido.estado !== "Entregado") return "";
+
+      return `
+        <div class="p-3 rounded mt-3" style="background: #24132e;">
+          <h6 class="text-white mb-3">Califica los productos de este pedido</h6>
+          ${pedido.productos.map((item) => {
+            const resena = item.resena;
+            if (resena) {
+              const estrellas = "★".repeat(resena.estrellas) + "☆".repeat(5 - resena.estrellas);
+              return `
+                <div class="border-bottom border-secondary py-2">
+                  <div class="text-light fw-bold">${escapeHtml(item.producto)}</div>
+                  <div class="text-warning">${estrellas}</div>
+                  ${resena.comentario ? `<div class="small text-secondary">${escapeHtml(resena.comentario)}</div>` : ""}
+                  <span class="badge bg-success">Reseña publicada</span>
+                </div>
+              `;
+            }
+
+            return `
+              <form class="form-resena border-bottom border-secondary py-3" data-pedido="${pedido.id_pedido}" data-producto="${item.id_producto}">
+                <div class="text-light fw-bold mb-2">${escapeHtml(item.producto)}</div>
+                <div class="d-flex gap-1 mb-2" role="radiogroup" aria-label="Calificación de ${escapeHtml(item.producto)}">
+                  ${[1, 2, 3, 4, 5].map((valor) => `<button type="button" class="btn btn-sm btn-outline-warning btn-estrella" data-estrellas="${valor}" aria-label="${valor} estrellas">★</button>`).join("")}
+                </div>
+                <input type="hidden" class="valor-estrellas" value="0">
+                <textarea class="form-control form-control-sm bg-dark text-light border-secondary mb-2" rows="2" maxlength="1000" placeholder="Comentario (opcional)"></textarea>
+                <button type="submit" class="btn btn-sm btn-tinto">Publicar reseña</button>
+              </form>
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
+
     function cargarMisPedidos() {
       const usuario = JSON.parse(sessionStorage.getItem("codigo_tinto_user"));
       const $cont =$("#contenedor-mis-pedidos");
@@ -57,7 +105,7 @@
       }
 
       $.ajax({
-        url: `${window.API_BASE}pedidos.php?cuenta_id=${usuario.id}`,
+        url: `${window.API_BASE}resenas.php`,
         method: "GET",
         dataType: "json",
         success: function (res) {
@@ -72,21 +120,6 @@
             if (p.estado === "En camino") badgeColor = "bg-primary";
             if (p.estado === "Entregado") badgeColor = "bg-success";
             if (p.estado === "Cancelado") badgeColor = "bg-danger";
-
-            let bloqueResena = "";
-            if (p.estado === "Entregado") {
-              bloqueResena = `
-                <div class="p-3 rounded mt-3" style="background: #24132e;">
-                  <label class="small text-secondary mb-1 d-block">¿Qué te pareció el vino? Califica tu experiencia:</label>
-                  <div class="d-flex align-items-center gap-2">
-                    <span class="fs-4 text-warning" style="cursor: pointer;" onclick="alert('¡Gracias por tu calificación de 5 estrellas!')">
-                      ★★★★★
-                    </span>
-                    <span class="small text-secondary">(Toca las estrellas para calificar)</span>
-                  </div>
-                </div>
-              `;
-            }
 
             $cont.append(`
               <div class="card card-vino p-4 mb-4 rounded-3 shadow-sm">
@@ -105,13 +138,64 @@
                   <a href="factura.html?id_pedido=${p.id_pedido}" class="text-warning text-decoration-none fw-bold">Ver Factura Fiscal &rarr;</a>
                 </div>
 
-                ${bloqueResena}
+                ${construirBloqueResena(p)}
               </div>
             `);
           });
+        },
+        error: function (xhr) {
+          const mensaje = xhr.status === 401 ? "Inicia sesión para consultar tus reseñas." : "No se pudieron cargar tus pedidos.";
+          $cont.html(`<div class="alert alert-danger">${mensaje}</div>`);
         }
       });
     }
+
+    $(document).on("click", ".btn-estrella", function () {
+      const $form = $(this).closest(".form-resena");
+      const valor = Number($(this).data("estrellas"));
+      $form.find(".valor-estrellas").val(valor);
+      $form.find(".btn-estrella").each(function () {
+        const activo = Number($(this).data("estrellas")) <= valor;
+        $(this).toggleClass("btn-warning text-dark", activo).toggleClass("btn-outline-warning", !activo);
+      });
+    });
+
+    $(document).on("submit", ".form-resena", function (evento) {
+      evento.preventDefault();
+      const $form = $(this);
+      const estrellas = Number($form.find(".valor-estrellas").val());
+      if (estrellas < 1 || estrellas > 5) {
+        alert("Selecciona una calificación de 1 a 5 estrellas.");
+        return;
+      }
+
+      const $boton = $form.find("button[type='submit']");
+      $boton.prop("disabled", true).text("Publicando...");
+      $.ajax({
+        url: `${window.API_BASE}resenas.php`,
+        method: "POST",
+        contentType: "application/json",
+        data: JSON.stringify({
+          id_pedido: Number($form.data("pedido")),
+          id_producto: Number($form.data("producto")),
+          estrellas: estrellas,
+          comentario: $form.find("textarea").val().trim()
+        }),
+        success: function (res) {
+          if (res.status === "ok") {
+            alert("Reseña publicada correctamente.");
+            cargarMisPedidos();
+          } else {
+            alert(res.mensaje || "No se pudo publicar la reseña.");
+            $boton.prop("disabled", false).text("Publicar reseña");
+          }
+        },
+        error: function (xhr) {
+          alert(xhr.responseJSON?.mensaje || "No se pudo publicar la reseña.");
+          $boton.prop("disabled", false).text("Publicar reseña");
+        }
+      });
+    });
   </script>
 </body>
 </html>

@@ -101,21 +101,28 @@
             if (pedido) {
               $("#fac-numero").text(pedido.nro_factura || `FACT-#${pedido.id_pedido}`);
               $("#fac-fecha").text(`Fecha: ${pedido.fecha_pedido.substring(0, 10)}`);
-              $("#fac-razon").text(pedido.username);
+              $("#fac-razon").text(pedido.razon_social || pedido.username || "Consumidor Final");
+              $("#fac-nit").text(pedido.nit_ci || "S/N");
               $("#fac-destino").text(pedido.direccion_referencia);
               $("#fac-tiempo").text(`${pedido.tiempo_estimado_min} minutos`);
               $("#fac-metodo").text(pedido.metodo_pago);
+              $("#fac-estado").text(pedido.estado_pago || "PAGADO");
+              if (pedido.estado_pago === "ANULADO") {
+                $("#fac-estado").removeClass("bg-success").addClass("bg-danger");
+              }
               $("#fac-total").text(`Bs. ${parseFloat(pedido.total).toFixed(2)}`);
 
               const $tbody =$("#tabla-factura-items tbody").empty();
-              $tbody.append(`
-                <tr>
-                  <td>1</td>
-                  <td>Despacho de Bebidas Seleccionadas (Orden #${pedido.id_pedido})</td>
-                  <td>Bs. ${parseFloat(pedido.total).toFixed(2)}</td>
-                  <td>Bs. ${parseFloat(pedido.total).toFixed(2)}</td>
-                </tr>
-              `);
+              (pedido.items || []).forEach((item) => {
+                $tbody.append(`
+                  <tr>
+                    <td>${parseInt(item.cantidad, 10)}</td>
+                    <td>${item.nombre}</td>
+                    <td>Bs. ${parseFloat(item.precio_unitario).toFixed(2)}</td>
+                    <td>Bs. ${parseFloat(item.subtotal).toFixed(2)}</td>
+                  </tr>
+                `);
+              });
             }
           }
         }

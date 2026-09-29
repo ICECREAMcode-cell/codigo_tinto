@@ -4,6 +4,17 @@ session_start();
 
 $metodo = $_SERVER['REQUEST_METHOD'];
 
+function obtenerRolSesion(PDO $pdo): ?string
+{
+    $cuentaId = (int)($_SESSION['cuenta_id'] ?? 0);
+    if ($cuentaId <= 0) return null;
+
+    $stmt = $pdo->prepare("SELECT r.Rol FROM cuentas c INNER JOIN roles r ON c.rol_id = r.Rol_id WHERE c.id = ? AND c.activo = 1 LIMIT 1");
+    $stmt->execute([$cuentaId]);
+    $usuario = $stmt->fetch();
+    return $usuario['Rol'] ?? null;
+}
+
 // 1. CREAR PEDIDO + FACTURAR (Checkout GPS)
 if ($metodo === 'POST') {
     if (empty($_SESSION['cuenta_id'])) {
@@ -47,7 +58,8 @@ if ($metodo === 'POST') {
         }
 
         $total_calculado = 0.0;
-        $stmtProducto = $pdo->prepare("SELECT id_producto, nombre, stock, activo FROM productos WHERE id_producto = ? LIMIT 1");
+        $stmtProducto = $pdo->prepare("SELECT id_producto, nombre, precio, stock, activo FROM productos WHERE id_producto = ? LIMIT 1");
+        $itemsValidados = [];
 
         foreach ($items as $item) {
             if (!isset($item['id_producto'], $item['cantidad'])) {
@@ -56,18 +68,12 @@ if ($metodo === 'POST') {
 
             $id_prod  = intval($item['id_producto']);
             $cant     = intval($item['cantidad']);
-            $precio_u = floatval($item['precio_unitario'] ?? 0);
-
             if ($id_prod <= 0) {
                 throw new Exception("Identificador de producto inválido.");
             }
 
             if ($cant <= 0) {
                 throw new Exception("La cantidad debe ser mayor a 0 para cada producto.");
-            }
-
-            if ($precio_u < 0) {
-                throw new Exception("El precio unitario no puede ser negativo.");
             }
 
             $stmtProducto->execute([$id_prod]);
@@ -81,8 +87,15 @@ if ($metodo === 'POST') {
                 throw new Exception("Stock insuficiente para el producto: " . $producto['nombre'] . ". Disponible: " . $producto['stock']);
             }
 
+            $precio_u = (float)$producto['precio'];
             $subtotal = $cant * $precio_u;
             $total_calculado += $subtotal;
+            $itemsValidados[] = [
+                'id_producto' => $id_prod,
+                'cantidad' => $cant,
+                'precio_unitario' => $precio_u,
+                'subtotal' => $subtotal
+            ];
         }
 
         if ($total <= 0 || abs($total - $total_calculado) > 0.01) {
@@ -99,11 +112,11 @@ if ($metodo === 'POST') {
         $stmtDetalle = $pdo->prepare("INSERT INTO detallepedidos (id_pedido, id_producto, cantidad, precio_unitario, subtotal) VALUES (?, ?, ?, ?, ?)");
         $stmtStock   = $pdo->prepare("UPDATE productos SET stock = stock - ? WHERE id_producto = ? AND stock >= ?");
 
-        foreach ($items as $item) {
-            $id_prod  = intval($item['id_producto']);
-            $cant     = intval($item['cantidad']);
-            $precio_u = floatval($item['precio_unitario']);
-            $subtotal = $cant * $precio_u;
+        foreach ($itemsValidados as $item) {
+            $id_prod  = $item['id_producto'];
+            $cant     = $item['cantidad'];
+            $precio_u = $item['precio_unitario'];
+            $subtotal = $item['subtotal'];
 
             $stmtDetalle->execute([$id_pedido, $id_prod, $cant, $precio_u, $subtotal]);
 
@@ -139,10 +152,22 @@ if ($metodo === 'POST') {
 
 // 2. GET: LISTAR PEDIDOS (Tanto para el Administrador como para "Mis Pedidos" del Cliente)
 if ($metodo === 'GET') {
+    $rolSesion = obtenerRolSesion($pdo);
+    if (!$rolSesion) {
+        http_response_code(401);
+        echo json_encode(["status" => "error", "mensaje" => "Debes iniciar sesión para consultar pedidos."]);
+        exit;
+    }
+
     $cuenta_id = $_GET['cuenta_id'] ?? null;
     $estado    = $_GET['estado'] ?? 'todos';
 
-    $sql = "SELECT p.*, c.username, c.telefono, m.nombre AS metodo_pago, f.nro_factura, f.estado_pago
+    if (!in_array($rolSesion, ['Admin', 'SEO'], true)) {
+        $cuenta_id = (int)$_SESSION['cuenta_id'];
+    }
+
+    $sql = "SELECT p.*, c.username, c.telefono, m.nombre AS metodo_pago,
+                   f.nro_factura, f.nit_ci, f.razon_social, f.estado_pago
             FROM pedidos p
             INNER JOIN cuentas c ON p.cuenta_id = c.id
             INNER JOIN metodospago m ON p.metodo_pago_id = m.id_metodo
@@ -165,12 +190,41 @@ if ($metodo === 'GET') {
     $stmt->execute($params);
     $pedidos = $stmt->fetchAll();
 
+    if ($pedidos) {
+        $idsPedido = array_map('intval', array_column($pedidos, 'id_pedido'));
+        $marcadores = implode(',', array_fill(0, count($idsPedido), '?'));
+        $stmtDetalle = $pdo->prepare(
+            "SELECT d.id_pedido, d.id_producto, d.cantidad, d.precio_unitario, d.subtotal, pr.nombre
+             FROM detallepedidos d
+             INNER JOIN productos pr ON pr.id_producto = d.id_producto
+             WHERE d.id_pedido IN ($marcadores)
+             ORDER BY d.id_detalle ASC"
+        );
+        $stmtDetalle->execute($idsPedido);
+        $detallesPorPedido = [];
+        foreach ($stmtDetalle->fetchAll() as $detalle) {
+            $detallesPorPedido[(int)$detalle['id_pedido']][] = $detalle;
+        }
+
+        foreach ($pedidos as &$pedido) {
+            $pedido['items'] = $detallesPorPedido[(int)$pedido['id_pedido']] ?? [];
+        }
+        unset($pedido);
+    }
+
     echo json_encode(["status" => "ok", "data" => $pedidos]);
     exit;
 }
 
 // 3. PUT: ACTUALIZAR ESTADO DEL PEDIDO (Exclusivo Admin: Despachar / Entregar)
 if ($metodo === 'PUT') {
+    $rolSesion = obtenerRolSesion($pdo);
+    if (!in_array($rolSesion, ['Admin', 'SEO'], true)) {
+        http_response_code($rolSesion ? 403 : 401);
+        echo json_encode(["status" => "error", "mensaje" => "Solo el personal administrativo puede actualizar pedidos."]);
+        exit;
+    }
+
     $datos = json_decode(file_get_contents("php://input"), true);
     $id_pedido   = intval($datos['id_pedido'] ?? 0);
     $nuevoEstado = $datos['estado'] ?? '';
@@ -182,6 +236,11 @@ if ($metodo === 'PUT') {
 
     $stmt = $pdo->prepare("UPDATE pedidos SET estado = ? WHERE id_pedido = ?");
     $stmt->execute([$nuevoEstado, $id_pedido]);
+
+    if ($nuevoEstado === 'Cancelado') {
+        $stmtFactura = $pdo->prepare("UPDATE facturas SET estado_pago = 'ANULADO' WHERE id_pedido = ?");
+        $stmtFactura->execute([$id_pedido]);
+    }
 
     echo json_encode(["status" => "ok", "mensaje" => "Estado de pedido actualizado a: $nuevoEstado"]);
     exit;

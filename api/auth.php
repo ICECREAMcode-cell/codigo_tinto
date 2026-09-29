@@ -86,6 +86,7 @@ if ($accion === 'login') {
             exit;
         }
 
+        session_regenerate_id(true);
         $_SESSION['cuenta_id'] = (int)$cuenta['id'];
         unset($cuenta['contrasena']);
         echo json_encode([
@@ -113,6 +114,8 @@ if ($accion === 'logout') {
 
 // 4. LISTAR USUARIOS
 if ($accion === 'listar_usuarios') {
+    $rolSesion = obtenerRolAdministrativo($pdo);
+    if (!$rolSesion) exit;
     $stmt = $pdo->query("SELECT c.id, c.username, c.correo, c.ci, c.telefono, c.creado_en, c.activo, c.rol_id, r.Rol 
                          FROM cuentas c
                          INNER JOIN roles r ON c.rol_id = r.Rol_id
@@ -125,7 +128,9 @@ if ($accion === 'listar_usuarios') {
 if ($accion === 'cambiar_estado_usuario') {
     $idObjetivo    = intval($input['id_usuario'] ?? 0);
     $nuevoEstado   = intval($input['activo'] ?? 0);
-    $solicitanteId = intval($input['solicitante_id'] ?? 0);
+    $rolSesion     = obtenerRolAdministrativo($pdo);
+    if (!$rolSesion) exit;
+    $solicitanteId = (int)$_SESSION['cuenta_id'];
 
     // Obtener datos del solicitante
     $stmtSol = $pdo->prepare("SELECT c.rol_id, r.Rol FROM cuentas c INNER JOIN roles r ON c.rol_id = r.Rol_id WHERE c.id = ?");
@@ -168,6 +173,7 @@ if ($accion === 'cambiar_estado_usuario') {
 
 // 5. SOPORTE: HISTORIAL DE PEDIDOS Y RESEÑAS DEL USUARIO
 if ($accion === 'historial_soporte') {
+    if (!obtenerRolAdministrativo($pdo)) exit;
     $cuenta_id = intval($_GET['cuenta_id'] ?? 0);
 
     // Pedidos
@@ -193,6 +199,7 @@ if ($accion === 'historial_soporte') {
 
 // 6. RESTABLECER CONTRASEÑA PROVISIONAL (BUENA PRÁCTICA DE SOPORTE)
 if ($accion === 'reset_password_soporte') {
+    if (!obtenerRolAdministrativo($pdo)) exit;
     $idObjetivo = intval($input['id_usuario'] ?? 0);
     $nuevaClave = "Tinto@" . rand(1000, 9999);
     $passHash   = password_hash($nuevaClave, PASSWORD_BCRYPT);
@@ -206,5 +213,25 @@ if ($accion === 'reset_password_soporte') {
         "mensaje" => "Contraseña restablecida con éxito."
     ]);
     exit;
+}
+
+function obtenerRolAdministrativo(PDO $pdo): ?string
+{
+    $cuentaId = (int)($_SESSION['cuenta_id'] ?? 0);
+    if ($cuentaId <= 0) {
+        http_response_code(401);
+        echo json_encode(["status" => "error", "mensaje" => "Debes iniciar sesión."]);
+        return null;
+    }
+
+    $stmt = $pdo->prepare("SELECT r.Rol FROM cuentas c INNER JOIN roles r ON c.rol_id = r.Rol_id WHERE c.id = ? AND c.activo = 1 LIMIT 1");
+    $stmt->execute([$cuentaId]);
+    $usuario = $stmt->fetch();
+    if (!$usuario || !in_array($usuario['Rol'], ['Admin', 'SEO'], true)) {
+        http_response_code(403);
+        echo json_encode(["status" => "error", "mensaje" => "No tienes permisos administrativos."]);
+        return null;
+    }
+    return $usuario['Rol'];
 }
 ?>

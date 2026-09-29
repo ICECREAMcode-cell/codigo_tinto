@@ -96,8 +96,8 @@
 
             <!-- Entrada de Imagen Canvas -->
             <div class="mb-3">
-              <label class="form-label small text-light">Foto de la Botella</label>
-              <input type="file" id="admin-foto-input" class="form-control form-control-sm bg-dark text-light border-secondary" accept="image/*" required>
+              <label class="form-label small text-light">Foto de la Botella (obligatoria al crear)</label>
+              <input type="file" id="admin-foto-input" class="form-control form-control-sm bg-dark text-light border-secondary" accept="image/*">
               <div id="info-compresion" class="small mt-2 font-monospace"></div>
               
               <div class="text-center mt-2">
@@ -145,7 +145,7 @@
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="../../assets/js/compresor.js"></script>
-  <script src="../../assets/js/app.js?v=stock-admin-refresh-1"></script>
+  <script src="../../assets/js/app.js?v=stock-edit-image-2"></script>
   <script>
     // Guardia de rol
     const usuario = JSON.parse(sessionStorage.getItem("codigo_tinto_user"));

@@ -24,7 +24,7 @@
     <div class="row g-5 align-items-center">
       <div class="col-md-5 text-center">
         <div class="p-3 rounded-4 prod-img-wrap" style="height: 420px; background: #130a18; border: 1px solid var(--color-borde-card);">
-          <img id="detalle-img" src="../assets/img/productos/default.jpg" alt="Botella" class="img-fluid rounded" style="max-height: 100%; object-fit: contain;">
+          <img id="detalle-img" src="../assets/img/productos/default.svg" alt="Botella" class="img-fluid rounded" style="max-height: 100%; object-fit: contain;">
         </div>
       </div>
       <div class="col-md-7">
@@ -84,22 +84,35 @@
             $("#detalle-temporada").text(productoActual.temporada_nombre);
             $("#detalle-stock").text(`${productoActual.stock} botellas`);
             $("#detalle-cant").attr("max", productoActual.stock);
+            if (Number(productoActual.stock) <= 0) {
+              $("#detalle-stock").removeClass("bg-success").addClass("bg-danger").text("Agotado");
+              $("#detalle-cant, #btn-agregar-detalle").prop("disabled", true);
+            }
 
             if (productoActual.imagen_url) {
               $("#detalle-img").attr("src", productoActual.imagen_url);
             }
 
-            const stars = Math.round(productoActual.rating_promedio);
+            const rating = Number(productoActual.rating_promedio) || 0;
+            const stars = Math.round(rating);
             $("#detalle-estrellas").text("★".repeat(stars) + "☆".repeat(5 - stars));
-            $("#detalle-rating-info").text(`(${parseFloat(productoActual.rating_promedio).toFixed(1)} de 5 • ${productoActual.total_resenas} reseñas)`);
+            const ratingTexto = Number(productoActual.total_resenas) > 0
+              ? `(${rating.toFixed(1)} de 5 • ${productoActual.total_resenas} reseñas)`
+              : "(Sin reseñas todavía)";
+            $("#detalle-rating-info").text(ratingTexto);
           }
         }
       });
 
       $("#btn-agregar-detalle").on("click", function () {
         if (!productoActual) return;
-        const cant = parseInt($("#detalle-cant").val()) || 1;
-        agregarAlCarrito(productoActual.id_producto, productoActual.nombre, parseFloat(productoActual.precio), cant, productoActual.imagen_url);
+        const stock = Number(productoActual.stock) || 0;
+        const cant = Math.max(1, Math.min(parseInt($("#detalle-cant").val()) || 1, stock));
+        if (stock <= 0) {
+          alert("Este producto está agotado.");
+          return;
+        }
+        agregarAlCarrito(productoActual.id_producto, productoActual.nombre, parseFloat(productoActual.precio), cant, productoActual.imagen_url, stock);
         
         const btn = $(this);
         btn.text(`✓ Añadido (${cant})`).addClass("btn-success").removeClass("btn-tinto");
